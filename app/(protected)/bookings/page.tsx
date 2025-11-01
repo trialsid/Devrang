@@ -2,11 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useAppContext } from "../../../context/AppContext";
-import {
-  Booking,
-  BookingStatus,
-} from "../../../astrogems-b2b-marketplace/types";
-
+import { Booking, BookingStatus } from "../../../types";
 const BookingDetailsModal: React.FC<{
   booking: Booking;
   onClose: () => void;

@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { MOCK_PRODUCTS } from "../../../constants";
-import { Product } from "../../../astrogems-b2b-marketplace/types";
+import { Product } from "../../../types";
 import { useAppContext } from "../../../context/AppContext";
 
 const ProductCard: React.FC<{
@@ -60,7 +60,7 @@ const ProductsPage: React.FC = () => {
     return MOCK_PRODUCTS.filter((product) => {
       const matchesSearch =
         product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        product.use.toLowerCase().includes(searchTerm.toLowerCase());
+        product.use?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = filterType === "All" || product.type === filterType;
       return matchesSearch && matchesType;
     }).sort((a, b) => {

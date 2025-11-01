@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useAppContext } from "../../../context/AppContext";
-import { Customer } from "../../../astrogems-b2b-marketplace/types";
+import { Customer } from "../../../types";
 
 const CustomerFormModal: React.FC<{
   customer: Customer | null;

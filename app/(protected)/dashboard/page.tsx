@@ -3,7 +3,7 @@
 import React from "react";
 import Link from "next/link";
 import { useAppContext } from "../../../context/AppContext";
-import { BookingStatus } from "../../../astrogems-b2b-marketplace/types";
+import { BookingStatus } from "../../../types";
 
 const DashboardCard: React.FC<{
   title: string;

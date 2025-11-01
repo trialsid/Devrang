@@ -2,11 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { useAppContext } from "../../../context/AppContext";
-import {
-  Customer,
-  CartItem,
-  BookingStatus,
-} from "../../../astrogems-b2b-marketplace/types";
+import { Customer, CartItem, BookingStatus } from "../../../types";
 import { TrashIcon } from "../../../components/Icons";
 import { useRouter } from "next/navigation";
 
@@ -170,7 +166,7 @@ const CartPage: React.FC = () => {
                       value={item.quantity}
                       onChange={(e) =>
                         updateCartItem(
-                          item.product.id,
+                          item.product.id as string,
                           parseInt(e.target.value) || 1
                         )
                       }
@@ -182,13 +178,16 @@ const CartPage: React.FC = () => {
                       placeholder="Override Price"
                       value={item.customPrice || ""}
                       onChange={(e) =>
-                        handlePriceOverride(item.product.id, e.target.value)
+                        handlePriceOverride(
+                          item.product.id as string,
+                          e.target.value
+                        )
                       }
                       className="w-28 p-2 border rounded-md"
                       disabled={selectedCustomer === "self"}
                     />
                     <button
-                      onClick={() => removeFromCart(item.product.id)}
+                      onClick={() => removeFromCart(item.product.id as string)}
                       className="text-red-500 hover:text-red-700"
                     >
                       <TrashIcon className="w-6 h-6" />
