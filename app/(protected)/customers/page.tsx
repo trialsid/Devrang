@@ -1,169 +1,86 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { useAppContext } from "../../../context/AppContext";
+import React, { useState, useEffect, useMemo } from "react";
 import { Customer } from "../../../types";
-
-const CustomerFormModal: React.FC<{
-  customer: Customer | null;
-  onClose: () => void;
-  onSave: (customer: Customer | Omit<Customer, "id">) => void;
-}> = ({ customer, onClose, onSave }) => {
-  const [formData, setFormData] = useState<Omit<Customer, "id">>(
-    customer || {
-      name: "",
-      phone: "",
-      email: "",
-      shippingAddress: "",
-      dob: "",
-      gotra: "",
-      rating: 0,
-      comments: "",
-    }
-  );
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: name === "rating" ? parseInt(value) || 0 : value,
-    }));
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (customer) {
-      onSave({ ...customer, ...formData });
-    } else {
-      onSave(formData);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-      <div className="bg-white rounded-lg shadow-xl p-8 w-full max-w-lg">
-        <h2 className="text-2xl font-bold text-text-main mb-6">
-          {customer ? "Edit Customer" : "Add New Customer"}
-        </h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Name (Required)"
-              required
-              className="p-2 border rounded"
-            />
-            <input
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              placeholder="Phone (Required)"
-              required
-              className="p-2 border rounded"
-            />
-            <input
-              name="email"
-              type="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="Email"
-              className="p-2 border rounded"
-            />
-            <input
-              name="shippingAddress"
-              value={formData.shippingAddress}
-              onChange={handleChange}
-              placeholder="Shipping Address"
-              className="p-2 border rounded"
-            />
-            <input
-              name="dob"
-              type="date"
-              value={formData.dob}
-              onChange={handleChange}
-              placeholder="Date of Birth"
-              className="p-2 border rounded"
-            />
-            <input
-              name="gotra"
-              value={formData.gotra}
-              onChange={handleChange}
-              placeholder="Gotra"
-              className="p-2 border rounded"
-            />
-          </div>
-          <textarea
-            name="comments"
-            value={formData.comments}
-            onChange={handleChange}
-            placeholder="Comments"
-            className="w-full p-2 border rounded"
-            rows={3}
-          ></textarea>
-          <div className="flex justify-end gap-4 mt-6">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-focus"
-            >
-              Save Customer
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-};
-
+import CustomerFormModal from "@/components/CustomersPage";
 const CustomersPage: React.FC = () => {
-  const { customers, addCustomer, updateCustomer, deleteCustomer } =
-    useAppContext();
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const filteredCustomers = useMemo(() => {
-    return customers.filter(
-      (c) =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.phone.includes(searchTerm)
-    );
-  }, [customers, searchTerm]);
-
-  const handleSaveCustomer = (
-    customerData: Customer | Omit<Customer, "id">
-  ) => {
-    if ("id" in customerData) {
-      updateCustomer(customerData as Customer);
-    } else {
-      addCustomer(customerData as Omit<Customer, "id">);
+  // ✅ Load customers
+  const loadCustomers = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/customers");
+      const data = await res.json();
+      setCustomers(data);
+    } catch (err) {
+      console.error("Failed to load customers:", err);
+    } finally {
+      setLoading(false);
     }
-    setIsModalOpen(false);
-    setEditingCustomer(null);
   };
 
-  const handleEdit = (customer: Customer) => {
-    setEditingCustomer(customer);
-    setIsModalOpen(true);
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  // ✅ Create / Update
+  const handleSaveCustomer = async (data: Customer | Omit<Customer, "_id">) => {
+    try {
+      if ("_id" in data) {
+        await fetch("/api/customers/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: data._id, ...data }),
+        });
+      } else {
+        await fetch("/api/customers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+      }
+
+      await loadCustomers();
+      setIsModalOpen(false);
+      setEditingCustomer(null);
+    } catch (err) {
+      console.error("❌ Save error:", err);
+    }
   };
 
-  const handleAddNew = () => {
-    setEditingCustomer(null);
-    setIsModalOpen(true);
+  // ✅ Delete
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure?")) return;
+    try {
+      await fetch("/api/customers/delete", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      await loadCustomers();
+    } catch (err) {
+      console.error("❌ Delete error:", err);
+    }
   };
+
+  const filteredCustomers = useMemo(
+    () =>
+      customers.filter(
+        (c) =>
+          c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          c.phone.includes(searchTerm)
+      ),
+    [customers, searchTerm]
+  );
 
   return (
     <div>
+      {/* Modal */}
       {isModalOpen && (
         <CustomerFormModal
           customer={editingCustomer}
@@ -171,16 +88,22 @@ const CustomersPage: React.FC = () => {
           onSave={handleSaveCustomer}
         />
       )}
+
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-text-main">Manage Customers</h1>
         <button
-          onClick={handleAddNew}
+          onClick={() => {
+            setEditingCustomer(null);
+            setIsModalOpen(true);
+          }}
           className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-focus"
         >
           Add New Customer
         </button>
       </div>
 
+      {/* Search */}
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
         <input
           type="text"
@@ -191,45 +114,49 @@ const CustomersPage: React.FC = () => {
         />
       </div>
 
+      {/* Table */}
       <div className="bg-white rounded-lg shadow-md overflow-x-auto">
-        <table className="w-full whitespace-nowrap">
-          <thead className="bg-secondary">
-            <tr className="text-left text-primary">
-              <th className="px-6 py-3">Name</th>
-              <th className="px-6 py-3">Phone</th>
-              <th className="px-6 py-3">Email</th>
-              <th className="px-6 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {filteredCustomers.map((customer) => (
-              <tr key={customer.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">{customer.name}</td>
-                <td className="px-6 py-4">{customer.phone}</td>
-                <td className="px-6 py-4">{customer.email || "N/A"}</td>
-                <td className="px-6 py-4">
-                  <button
-                    onClick={() => handleEdit(customer)}
-                    className="text-blue-600 hover:underline mr-4"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() =>
-                      window.confirm("Are you sure?") &&
-                      deleteCustomer(customer.id)
-                    }
-                    className="text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {filteredCustomers.length === 0 && (
+        {loading ? (
+          <p className="text-center p-6 text-gray-500">Loading...</p>
+        ) : filteredCustomers.length === 0 ? (
           <p className="text-center p-6 text-gray-500">No customers found.</p>
+        ) : (
+          <table className="w-full whitespace-nowrap">
+            <thead className="bg-secondary">
+              <tr className="text-left text-primary">
+                <th className="px-6 py-3">Name</th>
+                <th className="px-6 py-3">Phone</th>
+                <th className="px-6 py-3">Email</th>
+                <th className="px-6 py-3">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {filteredCustomers.map((c) => (
+                <tr key={c._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">{c.name}</td>
+                  <td className="px-6 py-4">{c.phone}</td>
+                  <td className="px-6 py-4">{c.email || "N/A"}</td>
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => {
+                        setEditingCustomer(c);
+                        setIsModalOpen(true);
+                      }}
+                      className="text-blue-600 hover:underline mr-4"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(c._id!)}
+                      className="text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

@@ -4,9 +4,7 @@ import { MongoDBAdapter } from "@auth/mongodb-adapter";
 import clientPromise from "@/app/lib/mongodb";
 
 export const authOptions: NextAuthOptions = {
-  adapter: MongoDBAdapter(clientPromise, {
-    databaseName: "devrang",
-  }),
+  adapter: MongoDBAdapter(clientPromise, { databaseName: "devrang" }),
 
   providers: [
     GoogleProvider({
@@ -15,9 +13,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
 
-  session: {
-    strategy: "jwt",
-  },
+  session: { strategy: "jwt" },
 
   callbacks: {
     async jwt({ token, user }) {
@@ -26,7 +22,6 @@ export const authOptions: NextAuthOptions = {
     },
     async session({ session, token }) {
       if (token?.id && session.user) {
-        // attach token ID to session.user
         (session.user as any).id = token.id;
       }
       return session;
@@ -34,6 +29,7 @@ export const authOptions: NextAuthOptions = {
   },
 
   events: {
+    // Create user profile on first sign-in
     async createUser({ user }) {
       try {
         const client = await clientPromise;
@@ -43,7 +39,6 @@ export const authOptions: NextAuthOptions = {
         const existing = await profiles.findOne({ email: user.email });
         if (existing) return;
 
-        // Determine if user is admin
         const adminEmails =
           process.env.ADMIN_EMAILS?.split(",").map((e) => e.trim()) || [];
         const role = adminEmails.includes(user.email ?? "") ? "admin" : "user";
@@ -52,9 +47,6 @@ export const authOptions: NextAuthOptions = {
           name: user.name || "",
           email: user.email,
           role,
-          phone: "",
-          address: "",
-          wishlist: [],
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -82,7 +74,5 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
-// ✅ Export both the NextAuth handler and the options
 const handler = NextAuth(authOptions);
-
 export { handler as GET, handler as POST };

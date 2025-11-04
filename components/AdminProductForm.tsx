@@ -65,7 +65,7 @@ export default function AdminProductForm({
     return Object.keys(newErrors).length === 0;
   };
 
-  // ✅ Generic input handler
+  // ✅ Input change handler
   const handleChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
@@ -78,7 +78,7 @@ export default function AdminProductForm({
     }));
   };
 
-  // ✅ Handle image file upload
+  // ✅ Handle file selection
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (selected) {
@@ -87,7 +87,7 @@ export default function AdminProductForm({
     }
   };
 
-  // ✅ Handle tag additions
+  // ✅ Handle tags / occasions
   const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
       e.preventDefault();
@@ -99,14 +99,6 @@ export default function AdminProductForm({
     }
   };
 
-  const removeTag = (tag: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      tags: prev.tags?.filter((t) => t !== tag),
-    }));
-  };
-
-  // ✅ Handle occasion additions
   const handleOccasionKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if ((e.key === "Enter" || e.key === ",") && occasionInput.trim()) {
       e.preventDefault();
@@ -118,14 +110,19 @@ export default function AdminProductForm({
     }
   };
 
-  const removeOccasion = (o: string) => {
+  const removeTag = (tag: string) =>
+    setFormData((prev) => ({
+      ...prev,
+      tags: prev.tags?.filter((t) => t !== tag),
+    }));
+
+  const removeOccasion = (o: string) =>
     setFormData((prev) => ({
       ...prev,
       occasion: prev.occasion?.filter((x) => x !== o),
     }));
-  };
 
-  // ✅ Upload image to server
+  // ✅ Upload file (optional)
   const uploadImage = async (): Promise<string | null> => {
     if (!file) return formData.imageUrl;
     try {
@@ -136,6 +133,7 @@ export default function AdminProductForm({
       const data = await res.json();
       if (data.url) {
         setFormData((prev) => ({ ...prev, imageUrl: data.url }));
+        setImagePreview(data.url);
         return data.url;
       }
       throw new Error("Upload failed");
@@ -148,7 +146,7 @@ export default function AdminProductForm({
     }
   };
 
-  // ✅ Submit form
+  // ✅ Submit handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -159,63 +157,60 @@ export default function AdminProductForm({
       await onSave({ ...formData, imageUrl: url });
     } catch (err) {
       console.error("❌ Save failed:", err);
+      alert("Error saving product.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="bg-stone-50 rounded-xl border border-stone-300 p-6 shadow-inner mb-6">
-      <h2 className="text-2xl font-serif text-amber-900 mb-4">
+    <div className="bg-white rounded-xl border border-stone-400 p-6 shadow-lg mb-6">
+      <h2 className="text-2xl font-serif text-stone-900 mb-4">
         {product ? "Edit Product" : "Add New Product"}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Product Name */}
         <div>
-          <label className="block text-sm font-medium text-stone-600">
+          <label className="block text-sm font-medium text-stone-800 mb-1">
             Product Name
           </label>
           <input
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="w-full border border-stone-300 rounded-md px-3 py-2"
+            className="w-full border border-stone-400 rounded-md px-3 py-2 text-stone-900 focus:ring-2 focus:ring-violet-400"
             placeholder="Enter product name"
           />
           {errors.name && <p className="text-sm text-red-600">{errors.name}</p>}
         </div>
 
-        {/* Brand */}
-        <div>
-          <label className="block text-sm font-medium text-stone-600">
-            Brand
-          </label>
-          <input
-            name="brand"
-            value={formData.brand}
-            onChange={handleChange}
-            className="w-full border border-stone-300 rounded-md px-3 py-2"
-            placeholder="E.g. Bombay Perfumery"
-          />
-        </div>
-
-        {/* Category + Price */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Brand / Category / Price */}
+        <div className="grid grid-cols-3 gap-4">
           <div>
-            <label className="block text-sm font-medium text-stone-600">
+            <label className="block text-sm font-medium text-stone-800 mb-1">
+              Brand
+            </label>
+            <input
+              name="brand"
+              value={formData.brand}
+              onChange={handleChange}
+              className="w-full border border-stone-400 rounded-md px-3 py-2 text-stone-900 focus:ring-2 focus:ring-violet-400"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-800 mb-1">
               Category
             </label>
             <input
               name="category"
               value={formData.category}
               onChange={handleChange}
-              className="w-full border border-stone-300 rounded-md px-3 py-2"
-              placeholder="E.g. Perfume, Gift, Decor"
+              className="w-full border border-stone-400 rounded-md px-3 py-2 text-stone-900 focus:ring-2 focus:ring-violet-400"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-stone-600">
+            <label className="block text-sm font-medium text-stone-800 mb-1">
               Price (₹)
             </label>
             <input
@@ -223,97 +218,14 @@ export default function AdminProductForm({
               type="number"
               value={formData.price}
               onChange={handleChange}
-              className="w-full border border-stone-300 rounded-md px-3 py-2"
+              className="w-full border border-stone-400 rounded-md px-3 py-2 text-stone-900 focus:ring-2 focus:ring-violet-400"
             />
           </div>
-        </div>
-
-        {/* Tags input */}
-        <div>
-          <label className="block text-sm font-medium text-stone-600">
-            Tags
-          </label>
-          <div className="flex flex-wrap gap-2 border border-stone-300 rounded-md p-2">
-            {formData.tags?.map((tag) => (
-              <span
-                key={tag}
-                className="bg-stone-200 text-stone-800 px-2 py-1 text-xs rounded-md flex items-center gap-1"
-              >
-                {tag}
-                <button
-                  type="button"
-                  className="text-red-600 font-bold"
-                  onClick={() => removeTag(tag)}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            <input
-              type="text"
-              value={tagInput}
-              onChange={(e) => setTagInput(e.target.value)}
-              onKeyDown={handleTagKeyDown}
-              placeholder="Type and press Enter or ,"
-              className="flex-1 min-w-[120px] border-none focus:ring-0 outline-none bg-transparent text-sm"
-            />
-          </div>
-        </div>
-
-        {/* Occasion input */}
-        <div>
-          <label className="block text-sm font-medium text-stone-600">
-            Occasion
-          </label>
-          <div className="flex flex-wrap gap-2 border border-stone-300 rounded-md p-2">
-            {formData.occasion?.map((o) => (
-              <span
-                key={o}
-                className="bg-stone-200 text-stone-800 px-2 py-1 text-xs rounded-md flex items-center gap-1"
-              >
-                {o}
-                <button
-                  type="button"
-                  className="text-red-600 font-bold"
-                  onClick={() => removeOccasion(o)}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-            <input
-              type="text"
-              value={occasionInput}
-              onChange={(e) => setOccasionInput(e.target.value)}
-              onKeyDown={handleOccasionKeyDown}
-              placeholder="Type and press Enter or ,"
-              className="flex-1 min-w-[120px] border-none focus:ring-0 outline-none bg-transparent text-sm"
-            />
-          </div>
-        </div>
-
-        {/* Recipient */}
-        <div>
-          <label className="block text-sm font-medium text-stone-600">
-            Recipient
-          </label>
-          <select
-            name="recipient"
-            value={formData.recipient || ""}
-            onChange={handleChange}
-            className="w-full border border-stone-300 rounded-md px-3 py-2"
-          >
-            <option value="">Select recipient</option>
-            <option value="Her">Her</option>
-            <option value="Him">Him</option>
-            <option value="Them">Them</option>
-            <option value="Anyone">Anyone</option>
-          </select>
         </div>
 
         {/* Story */}
         <div>
-          <label className="block text-sm font-medium text-stone-600">
+          <label className="block text-sm font-medium text-stone-800 mb-1">
             Story
           </label>
           <textarea
@@ -321,28 +233,14 @@ export default function AdminProductForm({
             value={formData.story}
             onChange={handleChange}
             rows={3}
-            className="w-full border border-stone-300 rounded-md px-3 py-2"
-            placeholder="Describe the story or inspiration behind the product"
-          />
-        </div>
-
-        {/* Affiliate Link */}
-        <div>
-          <label className="block text-sm font-medium text-stone-600">
-            Affiliate Link
-          </label>
-          <input
-            name="affiliateLink"
-            value={formData.affiliateLink}
-            onChange={handleChange}
-            className="w-full border border-stone-300 rounded-md px-3 py-2"
-            placeholder="https://example.com/product"
+            className="w-full border border-stone-400 rounded-md px-3 py-2 text-stone-900 focus:ring-2 focus:ring-violet-400"
+            placeholder="Write something meaningful..."
           />
         </div>
 
         {/* Image Upload */}
         <div>
-          <label className="block text-sm font-medium text-stone-600">
+          <label className="block text-sm font-medium text-stone-800 mb-1">
             Upload Image
           </label>
           <input type="file" accept="image/*" onChange={handleFileChange} />
@@ -351,7 +249,7 @@ export default function AdminProductForm({
             <img
               src={imagePreview}
               alt="Preview"
-              className="mt-3 w-40 h-40 object-cover rounded-md border border-stone-300"
+              className="mt-3 w-40 h-40 object-cover rounded-md border border-stone-400"
             />
           )}
         </div>
@@ -362,14 +260,14 @@ export default function AdminProductForm({
             type="button"
             onClick={onCancel}
             disabled={isSubmitting}
-            className="px-4 py-2 rounded-md border border-stone-300 text-stone-600 hover:bg-stone-200"
+            className="px-4 py-2 rounded-md border border-stone-400 text-stone-700 hover:bg-stone-100"
           >
             Cancel
           </button>
           <button
             type="submit"
             disabled={isSubmitting || uploading}
-            className="px-4 py-2 rounded-md bg-stone-800 text-white hover:bg-stone-900 disabled:bg-stone-500"
+            className="px-4 py-2 rounded-md bg-violet-700 text-white hover:bg-violet-800 disabled:opacity-60"
           >
             {isSubmitting ? "Saving..." : "Save Product"}
           </button>

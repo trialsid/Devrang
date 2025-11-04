@@ -7,22 +7,14 @@ import { TrashIcon } from "../../../components/Icons";
 import { useRouter } from "next/navigation";
 
 const CartPage: React.FC = () => {
-  const {
-    cart,
-    updateCartItem,
-    removeFromCart,
-    customers,
-    addBooking,
-    clearCart,
-  } = useAppContext();
+  const { cart, updateCartItem, removeFromCart, customers, clearCart } =
+    useAppContext();
   const [selectedCustomer, setSelectedCustomer] = useState<
     Customer | "self" | null
   >(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [lastBooking, setLastBooking] = useState<{
-    id: string;
-    paymentLink?: string;
-  } | null>(null);
+  const [lastBooking, setLastBooking] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const cartTotal = useMemo(() => {
@@ -45,30 +37,65 @@ const CartPage: React.FC = () => {
     }
   };
 
-  const handlePlaceBooking = () => {
+  // ✅ Updated: Create Razorpay order
+  const handlePlaceBooking = async () => {
     if (!selectedCustomer) {
       alert("Please select a customer or 'Self-booking' first.");
       return;
     }
-    const newBooking = {
-      customer: selectedCustomer,
-      items: cart,
-      total: cartTotal,
-      status:
+
+    if (cart.length === 0) {
+      alert("Your cart is empty.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Currently supports single-product checkout for simplicity
+      const product = cart[0].product;
+
+      // Convert internal customer/self structure into plain data
+      const customer =
         selectedCustomer === "self"
-          ? BookingStatus.Paid
-          : BookingStatus.PendingPayment,
-    };
-    addBooking(newBooking);
-    setLastBooking({
-      id: `booking_${Date.now()}`,
-      paymentLink:
-        selectedCustomer !== "self"
-          ? `https://pay.example.com/link_${Date.now()}`
-          : undefined,
-    });
-    setShowConfirmation(true);
-    clearCart();
+          ? {
+              name: "Self Booking",
+              email: "self@astrogems.com",
+              phone: "N/A",
+              address: "N/A",
+            }
+          : {
+              name: selectedCustomer.name,
+              email: selectedCustomer.email || "noemail@astrogems.com",
+              phone: selectedCustomer.phone,
+              address: selectedCustomer.shippingAddress || "Not provided",
+            };
+
+      const response = await fetch("/api/create-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product, customer }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create Razorpay order");
+      }
+
+      const data = await response.json();
+
+      // ✅ Show confirmation page
+      setLastBooking({
+        id: data.id,
+        paymentLink: `https://dashboard.razorpay.com/app/orders/${data.id}`,
+        amount: product.price,
+      });
+      setShowConfirmation(true);
+      clearCart();
+    } catch (error) {
+      console.error("❌ Booking creation failed:", error);
+      alert("Failed to place booking. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleNewBooking = () => {
@@ -78,21 +105,23 @@ const CartPage: React.FC = () => {
     router.push("/products");
   };
 
+  // ✅ Confirmation view
   if (showConfirmation) {
     return (
       <div className="bg-white p-8 rounded-lg shadow-lg text-center">
         <h1 className="text-3xl font-bold text-green-600 mb-4">
-          Booking Placed Successfully!
+          Booking Created Successfully!
         </h1>
         <p className="text-text-main mb-2">
-          Booking ID: <span className="font-mono">{lastBooking?.id}</span>
+          Razorpay Order ID:{" "}
+          <span className="font-mono">{lastBooking?.id}</span>
         </p>
-        {lastBooking?.paymentLink ? (
+        {lastBooking?.paymentLink && (
           <>
             <p className="text-text-main mb-4">
-              A payment request has been sent to the customer.
+              A payment request has been created via Razorpay.
             </p>
-            <p className="text-text-main mb-2">Shareable Payment Link:</p>
+            <p className="text-text-main mb-2">View Order on Razorpay:</p>
             <input
               type="text"
               readOnly
@@ -108,10 +137,6 @@ const CartPage: React.FC = () => {
               Copy Link
             </button>
           </>
-        ) : (
-          <p className="text-text-main mb-4">
-            Your self-booking has been confirmed and marked as paid.
-          </p>
         )}
         <button
           onClick={handleNewBooking}
@@ -123,10 +148,12 @@ const CartPage: React.FC = () => {
     );
   }
 
+  // ✅ Main cart page
   return (
     <div>
       <h1 className="text-3xl font-bold text-text-main mb-6">New Booking</h1>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* CART ITEMS */}
         <div className="lg:col-span-2">
           <div className="bg-white p-6 rounded-lg shadow-md">
             <h2 className="text-xl font-semibold mb-4">
@@ -158,7 +185,7 @@ const CartPage: React.FC = () => {
                     <div className="flex-grow">
                       <p className="font-semibold">{item.product.name}</p>
                       <p className="text-sm text-gray-500">
-                        Contract Price: ${item.product.price.toFixed(2)}
+                        Price: ₹{item.product.price.toFixed(2)}
                       </p>
                     </div>
                     <input
@@ -199,6 +226,7 @@ const CartPage: React.FC = () => {
           </div>
         </div>
 
+        {/* SUMMARY */}
         <div>
           <div className="bg-white p-6 rounded-lg shadow-md sticky top-8">
             <h2 className="text-xl font-semibold mb-4">Booking Summary</h2>
@@ -215,7 +243,7 @@ const CartPage: React.FC = () => {
                   setSelectedCustomer(
                     e.target.value === "self"
                       ? "self"
-                      : customers.find((c) => c.id === e.target.value) || null
+                      : customers.find((c) => c._id === e.target.value) || null
                   )
                 }
                 className="w-full p-2 border border-gray-300 rounded-md"
@@ -223,7 +251,7 @@ const CartPage: React.FC = () => {
                 <option value="">-- Select Customer --</option>
                 <option value="self">Self-booking</option>
                 {customers.map((c) => (
-                  <option key={c.id} value={c.id}>
+                  <option key={c._id} value={c._id}>
                     {c.name} - {c.phone}
                   </option>
                 ))}
@@ -232,19 +260,21 @@ const CartPage: React.FC = () => {
             <div className="space-y-2 border-t pt-4">
               <div className="flex justify-between">
                 <span>Subtotal</span>
-                <span>${cartTotal.toFixed(2)}</span>
+                <span>₹{cartTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
-                <span>${cartTotal.toFixed(2)}</span>
+                <span>₹{cartTotal.toFixed(2)}</span>
               </div>
             </div>
             <button
               onClick={handlePlaceBooking}
-              disabled={cart.length === 0 || !selectedCustomer}
+              disabled={cart.length === 0 || !selectedCustomer || loading}
               className="w-full mt-6 py-3 bg-primary text-white rounded-md font-semibold hover:bg-primary-focus disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {selectedCustomer === "self"
+              {loading
+                ? "Processing..."
+                : selectedCustomer === "self"
                 ? "Pay & Confirm"
                 : "Send Payment Request"}
             </button>

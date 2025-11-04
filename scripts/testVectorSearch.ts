@@ -1,5 +1,8 @@
 import { MongoClient } from "mongodb";
 import OpenAI from "openai";
+import dotenv from "dotenv";
+
+dotenv.config({ path: ".env.local" });
 
 const client = new MongoClient(process.env.MONGODB_URI!);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
