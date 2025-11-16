@@ -108,6 +108,7 @@ export default function AdminDashboard() {
   // 🔒 Only admin access (client-side)
   const adminEmails =
     process.env.NEXT_PUBLIC_ADMIN_EMAILS?.split(",").map((e) => e.trim()) || [];
+  console.log(adminEmails);
   const isAdmin = adminEmails.includes(session?.user?.email || "");
 
   if (status === "loading") return <p className="p-6">Loading...</p>;

@@ -41,7 +41,7 @@ dotenv.config({ path: ".env.local" });
     await customersCollection.createIndex({ id: 1 }, { unique: true });
 
     for (const customer of MOCK_CUSTOMERS) {
-      const exists = await customersCollection.findOne({ id: customer.id });
+      const exists = await customersCollection.findOne({ id: customer._id });
       if (!exists) {
         await customersCollection.insertOne({
           ...customer,

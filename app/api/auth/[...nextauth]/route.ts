@@ -17,11 +17,41 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === "development",
 
+  pages: {
+    error: "/auth/error",
+  },
+
   callbacks: {
+    async signIn({ user }) {
+      const client = await clientPromise;
+      const db = client.db("devrang");
+
+      const profile = await db
+        .collection("user_profiles")
+        .findOne({ email: user.email });
+
+      // 🟡 First login → allow sign-in so createUser() can run
+      if (!profile) {
+        console.log("🟡 First time login → Allowing");
+        return true;
+      }
+
+      // 🔥 Admin bypass
+      if (profile.role === "admin") return true;
+
+      // ❌ Block user until approved
+      if (!profile.approved) {
+        throw new Error("NOT_APPROVED");
+      }
+
+      return true;
+    },
+
     async jwt({ token, user }) {
       if (user) token.id = user.id;
       return token;
     },
+
     async session({ session, token }) {
       if (token?.id && session.user) {
         (session.user as any).id = token.id;
@@ -42,17 +72,21 @@ export const authOptions: NextAuthOptions = {
 
         const adminEmails =
           process.env.ADMIN_EMAILS?.split(",").map((e) => e.trim()) || [];
-        const role = adminEmails.includes(user.email ?? "") ? "admin" : "user";
+
+        const isAdmin = adminEmails.includes(user.email ?? "");
 
         await profiles.insertOne({
           name: user.name || "",
           email: user.email,
-          role,
+          role: isAdmin ? "admin" : "user",
+          approved: isAdmin ? true : false,
           createdAt: new Date(),
           updatedAt: new Date(),
         });
 
-        console.log(`✅ Created ${role} profile for ${user.email}`);
+        console.log(
+          `✅ Created ${isAdmin ? "admin" : "user"} profile for ${user.email}`
+        );
       } catch (err) {
         console.error("❌ Error creating user profile:", err);
       }
@@ -62,6 +96,7 @@ export const authOptions: NextAuthOptions = {
       try {
         const client = await clientPromise;
         const db = client.db("devrang");
+
         await db
           .collection("user_profiles")
           .updateOne(
@@ -74,7 +109,6 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // ✅ This is the correct place for error logging
   logger: {
     error(code, metadata) {
       console.error("🔴 NextAuth Error:", code, metadata);
