@@ -90,10 +90,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-// ✅ Razorpay requires plain text body parsing — disable automatic body parsing
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
